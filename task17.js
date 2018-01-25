@@ -20,9 +20,9 @@ function getDateStr(dat) {
 }
 function randomBuildData(seed) {
   var returnData = {};
-  var dat = new Date("2016-01-01");
+  var dat = new Date("2017-12-01");
   var datStr = ''
-  for (var i = 1; i < 32; i++) {
+  for (var i = 1; i <= 40; i++) {
     datStr = getDateStr(dat);
     returnData[datStr] = Math.ceil(Math.random() * seed);
     dat.setDate(dat.getDate() + 1);
@@ -52,18 +52,52 @@ var pageState = {
 }
 
 /**
+ * 周期均值计算
+ */
+function getAverageValue(cycle) {
+  var data = aqiSourceData[pageState.nowSelectCity];
+  var arr_date = [];
+  var arr_value = [];
+  for (var x in data) {
+    arr_date.push(x);
+    arr_value.push(data[x]);
+  }
+
+  var yushu = arr_date.length % cycle;
+  var arr_value_cycle = [];
+  for (var i = 0; i < arr_date.length - yushu; i+=cycle) {
+    arr_value_cycle.push(Math.floor(eval(arr_value.slice(i, i+cycle).join('+')) / cycle));
+  }
+  arr_value_cycle.push(Math.floor(eval(arr_value.slice(-yushu).join('+')) / yushu));
+  return arr_value_cycle;
+}
+
+/**
  * 渲染图表
  */
 function renderChart() {
-  var container = document.querySelector('.aqi-chart-wrap');
+  var container = document.getElementsByClassName('aqi-chart-wrap')[0];
+  var html_divs = '';
+  var data = aqiSourceData[pageState.nowSelectCity];
   if (pageState.nowGraTime === 'day') {
-    var html_divs = '';
-    var data = aqiSourceData[pageState.nowSelectCity];
+    html_divs = '';
     for (var x in data) {
-      html_divs += '<div style=\'width: 120px; height: ' + data[x] + 'px\'>' + data[x] + '<span>' + x + '</span></div>';
+      html_divs += '<div style=\'width: 60px; height: ' + data[x] + 'px\'>' + data[x] + '<span>' + x + '</span></div>';
     }
-    container.innerHTML = html_divs;
+  } else if (pageState.nowGraTime === 'week') {
+    var arr_value_week = getAverageValue(7);
+    html_divs = '';
+    for (var i = 0; i < arr_value_week.length; ++i) {
+      html_divs += '<div style=\'width: 80px; height: ' + arr_value_week[i] + 'px\'>' + arr_value_week[i] + '<span>第' + (i+1) + '周均值</span></div>';
+    }
+  } else if (pageState.nowGraTime === 'month') {
+    var arr_value_month = getAverageValue(31);
+    html_divs = '';
+    for (var i = 0; i < arr_value_month.length; ++i) {
+      html_divs += '<div style=\'width: 120px; height: ' + arr_value_month[i] + 'px\'>' + arr_value_month[i] + '<span>第' + (i+1) + '月均值</span></div>';
+    }
   }
+  container.innerHTML = html_divs;
 }
 
 /**
@@ -71,24 +105,25 @@ function renderChart() {
  */
 function graTimeChange(graTime) {
   // 确定是否选项发生了变化
+  // 设置对应数据
+  // 调用图表渲染函数
   if (graTime !== pageState.nowGraTime) {
     pageState.nowGraTime = graTime;
     renderChart();
   }
-  // 设置对应数据
-
-  // 调用图表渲染函数
 }
 
 /**
  * select发生变化时的处理函数
  */
-function citySelectChange() {
+function citySelectChange(selectCity) {
   // 确定是否选项发生了变化
-
   // 设置对应数据
-
   // 调用图表渲染函数
+  if (selectCity !== pageState.nowSelectCity) {
+    pageState.nowSelectCity = selectCity;
+    renderChart();
+  }
 }
 
 /**
@@ -112,9 +147,16 @@ function initGraTimeForm() {
  */
 function initCitySelector() {
   // 读取aqiSourceData中的城市，然后设置id为city-select的下拉列表中的选项
-
+  var select = document.getElementById('city-select');
+  var html_options = '';
+  for (var x in aqiSourceData) {
+    html_options += '<option value=\'' + x + '\'>' + x + '</option>';
+  }
+  select.innerHTML = html_options;
   // 给select设置事件，当选项发生变化时调用函数citySelectChange
-
+  select.onchange = function() {
+    citySelectChange(this.value);
+  }
 }
 
 /**
